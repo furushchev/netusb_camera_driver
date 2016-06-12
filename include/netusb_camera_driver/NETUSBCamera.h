@@ -8,13 +8,9 @@
 
 #include <NETUSBCAM_API.h>
 
+#include <string>
 #include <ros/ros.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/image_encodings.h>
-#include <sensor_msgs/fill_image.h>
 #include <netusb_camera_driver/exceptions.h>
-
-//#include <netusb_camera_driver/NETUSBCameraConfig.h>
 
 class NETUSBCamera
 {
@@ -23,11 +19,13 @@ public:
   NETUSBCamera();
   virtual ~NETUSBCamera();
 
-//  bool setNewConfiguration(netusb_camera_driver::NETUSBCameraConfig &config, const uint32_t &level);
   void connect();
   void disconnect();
   void start();
   void stop();
+  bool isStopped();
+  std::string getName();
+  bool getImage(uint8_t *buffer, unsigned int &bufsize);
   int RGBImageCallback(void *buffer, unsigned int buffersize);
 private:
   int camera_index_;

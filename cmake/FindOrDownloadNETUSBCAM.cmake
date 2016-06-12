@@ -13,3 +13,22 @@ function(download_netusbcam NETUSBCAM_LIB_VAR NETUSBCAM_INCLUDE_DIR_VAR)
   set(${NETUSBCAM_LIB_VAR} ${NETUSBCAM_LIB} PARENT_SCOPE)
   set(${NETUSBCAM_INCLUDE_DIR_VAR} ${NETUSBCAM_INCLUDE_DIR} PARENT_SCOPE)
 endfunction()
+
+message(STATUS "Finding NETUSBCAM Library")
+find_library(NETUSB_LIB NETUSBCAM)
+if(NOT NETUSBCAM_LIB)
+  message(STATUS "NETUSBCAM Library Not Found in System Library Path")
+  download_netusbcam(NETUSBCAM_LIB NETUSBCAM_INCLUDE_DIR)
+else()
+  set(NETUSBCAM_INCLUDE_DIR "${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_INCLUDE_DESTINATION}")
+endif()
+
+if(NETUSBCAM_LIB)
+  message(STATUS "Using NETUSBCAM Library: ${NETUSBCAM_LIB}")
+  message(STATUS "Using NETUSBCAM Include Directory: ${NETUSBCAM_INCLUDE_DIR}")
+  include_directories(${NETUSBCAM_INCLUDE_DIR})
+else()
+  message(FATAL_ERROR "NETUSBCAM Library Not Found")
+endif()
+
+

@@ -8,6 +8,13 @@
 
 #include <stdexcept>
 
+class CameraTimeoutException: public std::runtime_error
+{
+public:
+  CameraTimeoutException(): runtime_error("Dropping Camera Frame") {}
+  CameraTimeoutException(std::string msg): runtime_error(msg.c_str()) {}
+};
+
 class CameraNotRunningException: public std::runtime_error
 {
 public:
