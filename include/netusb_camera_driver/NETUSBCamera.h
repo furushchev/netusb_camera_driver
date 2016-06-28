@@ -6,7 +6,7 @@
 #ifndef NETUSBCAMERA_H__
 #define NETUSBCAMERA_H__
 
-#include <NETUSBCAM_API.h>
+#include <netusb_camera_driver/NETUSBCAM_API.h>
 
 #include <string>
 #include <ros/ros.h>

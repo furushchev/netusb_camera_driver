@@ -18,7 +18,9 @@ catkin_package(
   CATKIN_DEPENDS dynamic_reconfigure nodelet roscpp
 )
 
-include(cmake/FindOrDownloadNETUSBCAM.cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
+find_package(udev REQUIRED)
+find_package(NETUSBCAM REQUIRED)
 
 include_directories(
   include
@@ -26,7 +28,7 @@ include_directories(
 )
 
 add_library(NETUSBCamera src/NETUSBCamera.cpp)
-target_link_libraries(NETUSBCamera ${NETUSBCAM_LIB} ${catkin_LIBRARIES})
+target_link_libraries(NETUSBCamera ${NETUSBCAM_LIBRARIES} ${catkin_LIBRARIES})
 
 add_library(NETUSBCameraNodelet src/netusb_camera_nodelet.cpp)
 target_link_libraries(NETUSBCameraNodelet NETUSBCamera ${catkin_LIBRARIES})
@@ -45,8 +47,8 @@ install(TARGETS
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 install(FILES
-  ${NETUSBCAM_LIB}
-  ${LIBUDEV_LIB}
+  ${NETUSBCAM_LIBRARIES}
+  ${LIBUDEV_LIBRARIES}
   DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
 
 install(FILES
