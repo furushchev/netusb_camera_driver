@@ -73,8 +73,8 @@ public:
     DEFECT_COR = 43, // (4133CU/BU,4133CU) DefectPixelCorrection (ON||OFF); OFF(default)
     SW_TRIG_MODE = 94,  // (DELAYED_TRIGGER_RETURN (default) || IMMEDIATE_TRIGGER_RETURN)
     CALLBACK_BR_FRAMES = 97, // Broken frames also triggering the callback function (ON||OFF); OFF(default)
-    INVERT_PIXEL = 113, // (ON||OFF)  bw cams only
-    PIXEL_DEPTH = 120 // 0==8bit/pixel, 1=16bit/pixel
+    PIXEL_DEPTH = 120, // 0==8bit/pixel, 1=16bit/pixel
+    INVERT_PIXEL = 113 // (ON||OFF)  bw cams only
   };
 
   enum ParameterRangeType {
@@ -90,7 +90,7 @@ public:
     BLACKLEVEL = 12, // sensor blacklevel
     GAIN = 13, // sensor gain
     PLL = 15, // all models
-    STROBE_LENGHT = 16, // length of strobe pulse output (msec)
+    STROBE_LENGTH = 16, // length of strobe pulse output (msec)
     STROBE_DELAY = 17, // delay before strobe pulse is executed (msec)
     TRIGGER_DELAY = 18, // delay before hardware trigger is executed (msec)
 
@@ -134,8 +134,11 @@ public:
   Mode getMode() const;
 
   bool setParameterAuto(const ParameterRangeType &type, const bool &enable);
+  bool setParameter(const ParameterToggleType &type, const bool &value);
   bool setParameter(const ParameterRangeType &type, const unsigned long &value);
+  bool resetParameter(const ParameterToggleType &type);
   bool resetParameter(const ParameterRangeType &type);
+  bool getParameter(const ParameterToggleType &type) const;
   unsigned long getParameter(const ParameterRangeType &type) const;
   bool getParameterRange(const ParameterRangeType &type, int &min, int &max, int &def) const;
   bool  setExposure(const float &value);

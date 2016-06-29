@@ -42,6 +42,10 @@ namespace netusb_camera_driver
     }
     if (cfg_.exposure != config.exposure)
       cam_.setExposure((float)config.exposure);
+    if (cfg_.color != config.color)
+      cam_.setParameter(NETUSBCamera::COLOR, config.color);
+    if (cfg_.pixel_depth != config.pixel_depth)
+      cam_.setParameter(NETUSBCamera::PIXEL_DEPTH, config.pixel_depth);
     if (cfg_.brightness != config.brightness)
       cam_.setParameter(NETUSBCamera::BRIGHTNESS, config.brightness);
     if (cfg_.contrast != config.contrast)
@@ -67,7 +71,16 @@ namespace netusb_camera_driver
   {
     Config min, max, def;
     def.video_mode = cam_.getMode();
+    def.flipped_v = cam_.getParameter(NETUSBCamera::FLIPPED_V);
+    def.flipped_h = cam_.getParameter(NETUSBCamera::FLIPPED_H);
+    def.color = cam_.getParameter(NETUSBCamera::COLOR);
+    def.pixel_depth = cam_.getParameter(NETUSBCamera::PIXEL_DEPTH);
+    def.defect_cor = cam_.getParameter(NETUSBCamera::DEFECT_COR);
+    def.sw_trig_mode = cam_.getParameter(NETUSBCamera::SW_TRIG_MODE);
+    def.callback_br_frames = cam_.getParameter(NETUSBCamera::CALLBACK_BR_FRAMES);
     cam_.getExposureRange(min.exposure, max.exposure, def.exposure);
+    cam_.getParameterRange(NETUSBCamera::SHUTTER,
+                           min.shutter, max.shutter, def.shutter);
     cam_.getParameterRange(NETUSBCamera::BRIGHTNESS,
                            min.brightness, max.brightness, def.brightness);
     cam_.getParameterRange(NETUSBCamera::CONTRAST,
@@ -84,8 +97,16 @@ namespace netusb_camera_driver
                            min.green_gain, max.green_gain, def.green_gain);
     cam_.getParameterRange(NETUSBCamera::BLUE,
                            min.blue_gain, max.blue_gain, def.blue_gain);
-    cam_.getParameterRange(NETUSBCamera::SHUTTER,
-                           min.shutter, max.shutter, def.shutter);
+    cam_.getParameterRange(NETUSBCamera::BLACKLEVEL,
+                           min.blacklevel, max.blacklevel, def.blacklevel);
+    cam_.getParameterRange(NETUSBCamera::PLL,
+                           min.pll, max.pll, def.pll);
+    cam_.getParameterRange(NETUSBCamera::STROBE_LENGTH,
+                           min.strobe_length, max.strobe_length, def.strobe_length);
+    cam_.getParameterRange(NETUSBCamera::STROBE_DELAY,
+                           min.strobe_delay, max.strobe_delay, def.strobe_delay);
+    cam_.getParameterRange(NETUSBCamera::TRIGGER_DELAY,
+                           min.trigger_delay, max.trigger_delay, def.trigger_delay);
 
     srv_->setConfigDefault(def);
     srv_->setConfigMin(min);
