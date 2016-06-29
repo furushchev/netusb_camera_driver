@@ -49,6 +49,7 @@ namespace netusb_camera_driver
     boost::mutex conn_mutex_, cfg_mutex_;
     std::string frame_id_;
     int cam_index_;
+    NETUSBCamera::Mode cam_mode_;
     int image_width_, image_height_, image_step_;
     std::string image_encoding_;
     double conn_timeout_;

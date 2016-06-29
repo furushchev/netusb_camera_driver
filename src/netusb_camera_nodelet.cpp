@@ -8,7 +8,7 @@
 namespace netusb_camera_driver
 {
 
-  NETUSBCameraNodelet::NETUSBCameraNodelet(){}
+  NETUSBCameraNodelet::NETUSBCameraNodelet() {}
 
   NETUSBCameraNodelet::~NETUSBCameraNodelet()
   {
@@ -56,13 +56,11 @@ namespace netusb_camera_driver
       }
     } else if (cam_.isStopped()) {
       NODELET_INFO("Connecting to netusb camera");
-      volatile bool connected = false;
-      while (!connected && ros::ok())
+      while (!cam_.isConnected() && ros::ok())
       {
         try
         {
           cam_.connect();
-          connected = true;
         }
         catch (std::runtime_error &err)
         {
@@ -72,13 +70,14 @@ namespace netusb_camera_driver
       }
 
       NODELET_INFO("Starting netusb camera");
-      volatile bool started = false;
-      while (!started && ros::ok())
+      while (cam_.isStopped() && ros::ok())
       {
         try
         {
+          cam_.setMode(cam_mode_);
+          image_width_ = cam_.getWidth();
+          image_height_ = cam_.getHeight();
           cam_.start();
-          started = true;
         }
         catch (std::runtime_error &err)
         {
@@ -89,7 +88,7 @@ namespace netusb_camera_driver
       pub_thread_.reset(new boost::thread(
                           boost::bind(&NETUSBCameraNodelet::imagePoll, this)));
     } else {
-      NODELET_INFO("do nothing");
+      NODELET_INFO("current subscriber: %d", pub_.getNumSubscribers());
     }
   }
 
@@ -97,24 +96,26 @@ namespace netusb_camera_driver
   {
     NODELET_INFO("image polling thread started");
     uint32_t img_seq = 0;
+    ros::Time prev_time = ros::Time::now();
+    uint32_t fps_count = 0;
     while(!boost::this_thread::interruption_requested())
     {
+      if(pub_.getNumSubscribers() == 0)
+        continue;
       try
       {
         sensor_msgs::ImagePtr imgmsg(new sensor_msgs::Image);
-        uint8_t *buf;
-        unsigned int bufsize = 0;
-        bool newImage = cam_.getImage(buf, bufsize);
+        bool newImage = cam_.getImage(imgmsg->data);
         if (!newImage) continue;
 
-        // TODO: get width / height
-        image_step_ = bufsize / image_height_;
-
-        // properties of image message
-        sensor_msgs::fillImage(*imgmsg, image_encoding_, image_width_, image_height_, image_step_, buf);
         imgmsg->header.seq = img_seq++;
         imgmsg->header.frame_id = frame_id_;
         imgmsg->header.stamp = ros::Time::now(); // FIXME: use device time
+        imgmsg->encoding = image_encoding_;
+        imgmsg->height = image_height_;
+        imgmsg->width = image_width_;
+        imgmsg->step = imgmsg->data.size() / image_height_;
+        imgmsg->is_bigendian = 0;
 
         // camera info
         cam_info_.reset(new sensor_msgs::CameraInfo(cim_->getCameraInfo()));
@@ -123,8 +124,16 @@ namespace netusb_camera_driver
         cam_info_->header.frame_id = imgmsg->header.frame_id;
         // FIXME: ROI
 
-        if (pub_.getNumSubscribers() > 0)
-          pub_.publish(imgmsg, cam_info_);
+        pub_.publish(imgmsg, cam_info_);
+
+        // fps
+        ++fps_count;
+        ros::Time now = ros::Time::now();
+        if ((now - prev_time).toSec() > 1.0) {
+          ROS_INFO_STREAM("publishing " << cam_.getName() << " camera image (" << fps_count << " fps.)");
+          prev_time = now;
+          fps_count = 0;
+        }
       }
       catch (CameraTimeoutException &err)
       {
@@ -149,6 +158,7 @@ namespace netusb_camera_driver
     pnh_.param<int>("device_number", cam_index_, 0);
     pnh_.param<double>("conenction_timeout", conn_timeout_, 0.0);
     pnh_.param<std::string>("frame_id", frame_id_, "camera");
+    cam_mode_ = NETUSBCamera::VGA;
 
     image_encoding_ = sensor_msgs::image_encodings::BGR8;
 
