@@ -78,6 +78,10 @@ namespace netusb_camera_driver
           image_width_ = cam_.getWidth();
           image_height_ = cam_.getHeight();
           cam_.start();
+          cam_.setParameterAuto(NETUSBCamera::BRIGHTNESS, true);
+          cam_.setParameterAuto(NETUSBCamera::CONTRAST, true);
+          cam_.setParameterAuto(NETUSBCamera::WHITE_BALANCE, true);
+          cam_.setParameterAuto(NETUSBCamera::EXPOSURE_TIME, true);
         }
         catch (std::runtime_error &err)
         {

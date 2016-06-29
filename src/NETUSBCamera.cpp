@@ -11,6 +11,7 @@ namespace netusb_camera_driver {
 
   int RGBImageCallbackDelegate(void*,unsigned int,void*);
   std::string ImageModeString(const NETUSBCamera::Mode &mode);
+  std::string ErrorString(const NETUSBCamera::Result &result);
 
   NETUSBCamera::NETUSBCamera() :
     camera_index_(0),
@@ -38,11 +39,7 @@ namespace netusb_camera_driver {
 
     char c_api_version[20];
     result = NETUSBCAM_GetApiVersion(c_api_version, 20);
-    if (result != 0) {
-      std::stringstream ss;
-      ss << "failed to get API Version. retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "GetApiVersion");
     ROS_INFO_STREAM("Using NETUSBCAM API " << std::string(c_api_version));
 
     result = NETUSBCAM_Init();
@@ -53,36 +50,20 @@ namespace netusb_camera_driver {
     ROS_INFO("found %d netusb cameras", result);
 
     result = NETUSBCAM_Open(camera_index_);
-    if (result != 0) {
-      std::stringstream ss;
-      ss << "failed to open camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "Open");
 
     char c_cam_name[256];
     result = NETUSBCAM_GetName(camera_index_, c_cam_name, 256);
-    if (result != 0) {
-      std::stringstream ss;
-      ss << "failed to get name of camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "GetName");
 
     char c_cam_serial[256];
     result = NETUSBCAM_GetSerialNum(camera_index_, c_cam_serial, 256);
-    if (result != 0) {
-      std::stringstream ss;
-      ss << "failed to get serial number of camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "GetSerialNum");
 
     unsigned int modeList_length = 0;
     unsigned int modeList[10];
     result = NETUSBCAM_GetModeList(camera_index_, &modeList_length, modeList);
-    if (result != 0) {
-      std::stringstream ss;
-      ss << "failed to get mode list of camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "GetModeList");
     ROS_INFO_STREAM("Available modes:");
     available_modes_.resize(modeList_length);
     for (int i = 0; i < modeList_length; ++i) {
@@ -96,20 +77,12 @@ namespace netusb_camera_driver {
     ROS_INFO_STREAM("camera found: " << camera_name_ << " (serial: " << camera_serial_ << ")");
 
     result = NETUSBCAM_SetCallback(camera_index_, CALLBACK_RGB, &RGBImageCallbackDelegate, this);
-    if (result != 0) {
-      std::stringstream ss;
-      ss << "failed to set callback of camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "SetCallback");
 
     // exposure
     PARAM_PROPERTY_f e_prop;
     result = NETUSBCAM_GetExposureRange(camera_index_, &e_prop);
-    if (result != 0) {
-      std::stringstream ss;
-      ss << "failed to get exposure range of camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "GetExposureRange");
     exposure_min_ = e_prop.nMin;
     exposure_default_ = e_prop.nDef;
     exposure_max_ = e_prop.nMax;
@@ -124,11 +97,7 @@ namespace netusb_camera_driver {
     int result = 0;
 
     result = NETUSBCAM_Start(camera_index_);
-    if (result < 0) {
-      std::stringstream ss;
-      ss << "failed to start capture of camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "Start");
     is_stopped_ = false;
   }
 
@@ -137,17 +106,11 @@ namespace netusb_camera_driver {
     int result = 0;
 
     result = NETUSBCAM_Stop(camera_index_);
-    if (result != 0) {
-      std::stringstream ss;
-      ss << "failed to stop capture of camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "Stop");
+
     result = NETUSBCAM_SetCallback(camera_index_, CALLBACK_RGB, NULL, NULL);
-    if (result != 0) {
-      std::stringstream ss;
-      ss << "failed to unset callback of camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "SetCallback to NULL");
+
     is_stopped_ = true;
     latest_buffer_ = NULL;
     latest_buffersize_ = 0;
@@ -158,18 +121,11 @@ namespace netusb_camera_driver {
     int result = 0;
 
     result = NETUSBCAM_Close(camera_index_);
-    if (result != 0) {
-      std::stringstream ss;
-      ss << "failed to close camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "Close");
 
     result = NETUSBCAM_Destroy(camera_index_);
-    if (result != 0) {
-      std::stringstream ss;
-      ss << "failed to destroy camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "Destroy");
+
     is_connected_ = false;
   }
 
@@ -198,20 +154,12 @@ namespace netusb_camera_driver {
     }
 
     result = NETUSBCAM_SetMode(camera_index_, mode);
-    if (result < 0) {
-      std::stringstream ss;
-      ss << "failed to set mode of camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "SetMode");
 
     ROS_INFO_STREAM("Set mode: " << ImageModeString(mode));
 
     result = NETUSBCAM_GetSize(camera_index_, &image_width_, &image_height_);
-    if (result < 0) {
-      std::stringstream ss;
-      ss << "failed to get size of camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "GetSize");
 
     if (!isStopped()) {
       stop();
@@ -220,16 +168,73 @@ namespace netusb_camera_driver {
     return true;
   }
 
+  bool NETUSBCamera::setParameterAuto(const ParameterRangeType &type, const bool &enable)
+  {
+    int result = 0;
+    int supported = 0;
+    result = NETUSBCAM_GetParamAuto(camera_index_, (int)type, &supported);
+    std::stringstream ss;
+    ss << "getParamAuto type: " << type;
+    checkResult(result, ss.str());
+    if (supported == 0) return false;
+
+    result = NETUSBCAM_SetParamAuto(camera_index_, (int)type, enable ? 1 : 0);
+    if (result < 0) {
+      std::stringstream ss;
+      ss << "failed to set parameter type " << type << " auto of camera: " << camera_index_ << ". retcode: " << result;
+      throw CameraNotRunningException(ss.str());
+    }
+    return true;
+  }
+
+  bool NETUSBCamera::setParameter(const ParameterRangeType &type, const unsigned long &value)
+  {
+    int result = 0;
+    PARAM_PROPERTY prop;
+    result = NETUSBCAM_GetCamParameterRange(camera_index_, (int)type, &prop);
+    checkResult(result, "getCamParameter");
+    if (!prop.bEnabled) return false;
+    else if (prop.nMin > value || prop.nMax < value) {
+      std::stringstream ss;
+      ss << "parameter out-of-range: " << value << " (min: " << prop.nMin << ", max: " << prop.nMax << ")"
+         << ", retcode: " << result;
+      throw CameraNotRunningException(ss.str());
+    } else {
+      result = NETUSBCAM_SetCamParameter(camera_index_, (int)type, value);
+      std::stringstream ss;
+      ss << "setCamParameter type: " << type << ", value: " << value;
+      checkResult(result, ss.str());
+      return true;
+    }
+    return false;
+  }
+
+  bool NETUSBCamera::resetParameter(const ParameterRangeType &type)
+  {
+    int result = 0;
+    result = NETUSBCAM_SetParamAutoDef(camera_index_, (int)type);
+    std::stringstream ss;
+    ss << "resetParameter of type " << type;
+    checkResult(result, ss.str());
+    return true;
+  }
+
+  unsigned long NETUSBCamera::getParameter(const ParameterRangeType &type) const
+  {
+    int result = 0;
+    unsigned long value = 0;
+    result = NETUSBCAM_GetCamParameter(camera_index_, (int)type, &value);
+    const std::string msg = "getParameter";
+    checkResult(result, msg);
+    return value;
+  }
+
   float NETUSBCamera::getExposure() const
   {
     int result = 0;
     float value;
     result = NETUSBCAM_GetExposure(camera_index_, &value);
-    if (result < 0) {
-      std::stringstream ss;
-      ss << "failed to get exposure of camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "getExposure");
     return value;
   }
 
@@ -238,11 +243,8 @@ namespace netusb_camera_driver {
     int result = 0;
 
     result = NETUSBCAM_SetExposure(camera_index_, value);
-    if (result < 0) {
-      std::stringstream ss;
-      ss << "failed to set exposure of camera: " << camera_index_ << ". retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    }
+    checkResult(result, "setExposure");
+    return true;
   }
 
   int NETUSBCamera::RGBImageCallback(void* buffer, unsigned int bufferSize)
@@ -275,5 +277,32 @@ namespace netusb_camera_driver {
     };
     return std::string(modeNames[mode]);
   }
+
+  void NETUSBCamera::checkResult(const int &result, const std::string &message) const
+  {
+    Result res = (Result)result;
+    if (result != SUCCESS) {
+      std::stringstream ss;
+      ss << "[" << ErrorString(res) << "](camera: " << camera_index_ << ") failed: " << message;
+      throw CameraNotRunningException(ss.str());
+    }
+  }
+
+  std::string ErrorString(const NETUSBCamera::Result &result)
+  {
+    switch (result) {
+    case NETUSBCamera::SUCCESS: return "SUCCESS";
+    case NETUSBCamera::ERROR: return "ERROR";
+    case NETUSBCamera::IF_NOT_OPEN: return "IF_NOT_OPEN";
+    case NETUSBCamera::WRONG_PARAM: return "WRONG_PARAM";
+    case NETUSBCamera::OUT_OF_MEMORY: return "OUT_OF_MEMORY";
+    case NETUSBCamera::ALREADY_DONE: return "ALREADY_DONE";
+    case NETUSBCamera::WRONG_CLOCK_VAL: return "WRONG_CLOCK_VAL";
+    case NETUSBCamera::COM_LIB_INIT: return "COM_LIB_INIT";
+    case NETUSBCamera::NOT_IF_STARTED: return "NOT_IF_STARTED";
+    default: return "UNKNOWN";
+    }
+  };
+
 
 };
