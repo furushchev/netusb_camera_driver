@@ -131,14 +131,16 @@ public:
   };
 
   bool setMode(const Mode &mode);
+  Mode getMode() const;
 
   bool setParameterAuto(const ParameterRangeType &type, const bool &enable);
   bool setParameter(const ParameterRangeType &type, const unsigned long &value);
   bool resetParameter(const ParameterRangeType &type);
   unsigned long getParameter(const ParameterRangeType &type) const;
-
+  bool getParameterRange(const ParameterRangeType &type, int &min, int &max, int &def) const;
   bool  setExposure(const float &value);
   float getExposure() const;
+  bool  getExposureRange(double &min, double &max, double &def) const;
 
   void checkResult(const int &result, const std::string &message) const;
 
@@ -153,7 +155,6 @@ private:
   uint8_t* latest_buffer_;
   unsigned int latest_buffersize_;
   int   image_width_,  image_height_;
-  float exposure_min_, exposure_max_, exposure_default_;
   boost::mutex mutex_;
 };
 };

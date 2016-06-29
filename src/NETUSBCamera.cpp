@@ -76,25 +76,15 @@ namespace netusb_camera_driver {
     camera_serial_ = std::string(c_cam_serial);
     ROS_INFO_STREAM("camera found: " << camera_name_ << " (serial: " << camera_serial_ << ")");
 
-    result = NETUSBCAM_SetCallback(camera_index_, CALLBACK_RGB, &RGBImageCallbackDelegate, this);
-    checkResult(result, "SetCallback");
-
-    // exposure
-    PARAM_PROPERTY_f e_prop;
-    result = NETUSBCAM_GetExposureRange(camera_index_, &e_prop);
-    checkResult(result, "GetExposureRange");
-    exposure_min_ = e_prop.nMin;
-    exposure_default_ = e_prop.nDef;
-    exposure_max_ = e_prop.nMax;
-    ROS_INFO_STREAM("Available exposure range: " << exposure_min_ <<
-                    " - " << exposure_max_ << " (default: " << exposure_default_ << ")");
-
     is_connected_ = true;
   }
 
   void NETUSBCamera::start()
   {
     int result = 0;
+
+    result = NETUSBCAM_SetCallback(camera_index_, CALLBACK_RGB, &RGBImageCallbackDelegate, this);
+    checkResult(result, "SetCallback");
 
     result = NETUSBCAM_Start(camera_index_);
     checkResult(result, "Start");
@@ -142,6 +132,15 @@ namespace netusb_camera_driver {
     }
   }
 
+  NETUSBCamera::Mode NETUSBCamera::getMode() const
+  {
+    int result = 0;
+    unsigned int mode = -1;
+    result = NETUSBCAM_GetMode(camera_index_, &mode);
+    checkResult(result, "getMode");
+    return (Mode)mode;
+  }
+
   bool NETUSBCamera::setMode(const Mode &mode)
   {
     int result = 0;
@@ -153,6 +152,9 @@ namespace netusb_camera_driver {
       throw CameraNotRunningException(ss.str());
     }
 
+    bool need_restart = !isStopped();
+    if (need_restart) stop();
+
     result = NETUSBCAM_SetMode(camera_index_, mode);
     checkResult(result, "SetMode");
 
@@ -161,10 +163,8 @@ namespace netusb_camera_driver {
     result = NETUSBCAM_GetSize(camera_index_, &image_width_, &image_height_);
     checkResult(result, "GetSize");
 
-    if (!isStopped()) {
-      stop();
-      start();
-    }
+    if (need_restart) start();
+
     return true;
   }
 
@@ -190,23 +190,24 @@ namespace netusb_camera_driver {
   bool NETUSBCamera::setParameter(const ParameterRangeType &type, const unsigned long &value)
   {
     int result = 0;
+    unsigned long v = value;
     PARAM_PROPERTY prop;
     result = NETUSBCAM_GetCamParameterRange(camera_index_, (int)type, &prop);
     checkResult(result, "getCamParameter");
-    if (!prop.bEnabled) return false;
-    else if (prop.nMin > value || prop.nMax < value) {
-      std::stringstream ss;
-      ss << "parameter out-of-range: " << value << " (min: " << prop.nMin << ", max: " << prop.nMax << ")"
-         << ", retcode: " << result;
-      throw CameraNotRunningException(ss.str());
-    } else {
-      result = NETUSBCAM_SetCamParameter(camera_index_, (int)type, value);
-      std::stringstream ss;
-      ss << "setCamParameter type: " << type << ", value: " << value;
-      checkResult(result, ss.str());
-      return true;
+    if (!prop.bEnabled) {
+      ROS_ERROR("disabled");
+      return false;
+    } else if (value < prop.nMin) {
+      v = prop.nMin;
+    } else if (prop.nMax < value) {
+      v = prop.nMax;
     }
-    return false;
+    result = NETUSBCAM_SetCamParameter(camera_index_, (int)type, v);
+    std::stringstream ss;
+    ss << "setCamParameter type: " << type << ", value: " << v;
+    checkResult(result, ss.str());
+    ROS_INFO_STREAM("setCamParameter type: " << type << ", value: " << v);
+    return true;
   }
 
   bool NETUSBCamera::resetParameter(const ParameterRangeType &type)
@@ -229,6 +230,19 @@ namespace netusb_camera_driver {
     return value;
   }
 
+  bool NETUSBCamera::getParameterRange(const ParameterRangeType &type,
+                                       int &min, int &max, int &def) const
+  {
+    int result = 0;
+    PARAM_PROPERTY prop;
+    result = NETUSBCAM_GetCamParameterRange(camera_index_, (int)type, &prop);
+    min = (int)prop.nMin;
+    max = (int)prop.nMax;
+    def = (int)prop.nDef;
+    checkResult(result, "getCamParameter");
+    ROS_INFO_STREAM("type: " << type << ", enable: " << prop.bEnabled << ", auto: " << prop.bAuto);
+  }
+
   float NETUSBCamera::getExposure() const
   {
     int result = 0;
@@ -238,10 +252,20 @@ namespace netusb_camera_driver {
     return value;
   }
 
+  bool NETUSBCamera::getExposureRange(double &min, double &max, double &def) const
+  {
+    int result = 0;
+    PARAM_PROPERTY_f e_prop;
+    result = NETUSBCAM_GetExposureRange(camera_index_, &e_prop);
+    checkResult(result, "GetExposureRange");
+    min = (double)e_prop.nMin;
+    max = (double)e_prop.nMax;
+    def = (double)e_prop.nDef;
+  }
+
   bool NETUSBCamera::setExposure(const float &value)
   {
     int result = 0;
-
     result = NETUSBCAM_SetExposure(camera_index_, value);
     checkResult(result, "setExposure");
     return true;

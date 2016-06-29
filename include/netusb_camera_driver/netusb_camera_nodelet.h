@@ -34,12 +34,14 @@ namespace netusb_camera_driver
     void configCallback(Config &config, const uint32_t level);
     void connectCallback();
     void onInit();
+    void updateConfig();
     void imagePoll();
 
     ros::NodeHandle nh_, pnh_;
     boost::shared_ptr<image_transport::ImageTransport> it_;
     boost::shared_ptr<camera_info_manager::CameraInfoManager> cim_;
     boost::shared_ptr<dynamic_reconfigure::Server<Config> > srv_;
+    Config cfg_;
     image_transport::CameraPublisher pub_;
     sensor_msgs::CameraInfoPtr cam_info_;
 
@@ -49,7 +51,6 @@ namespace netusb_camera_driver
     boost::mutex conn_mutex_, cfg_mutex_;
     std::string frame_id_;
     int cam_index_;
-    NETUSBCamera::Mode cam_mode_;
     int image_width_, image_height_, image_step_;
     std::string image_encoding_;
     double conn_timeout_;
