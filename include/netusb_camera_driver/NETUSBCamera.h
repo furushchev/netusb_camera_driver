@@ -49,10 +49,17 @@ public:
     NOT_IF_STARTED = -7
   };
 
+  enum Toggle {
+    ON = 0,
+    OFF = 1
+  };
+
   enum ParameterType {
     BRIGHTNESS = 1, // all models
     CONTRAST = 2, // all models
     GAMMA = 3, // all models
+    FLIPPED_V = 4, // (ON||OFF); OFF (default)
+    FLIPPED_H = 5, // (ON||OFF); OFF (default)
     WHITE_BALANCE = 6, // (one push)
     EXPOSURE_TARGET = 8, // sets the target-value for the auto exposure algorithm 
     RED = 9, // only for color models; RGB Gain value
@@ -106,8 +113,10 @@ public:
   void setVideoMode(const Mode &mode);
   Mode getVideoMode() const;
 
+  void setBoolParameter(const ParameterType &type, const bool &value);
   void setParameter(const ParameterType &type, const int &value);
   void resetParameter(const ParameterType &type);
+  bool getBoolParameter(const ParameterType &type) const;
   int getParameter(const ParameterType &type) const;
 
   void  setExposure(const double &value);

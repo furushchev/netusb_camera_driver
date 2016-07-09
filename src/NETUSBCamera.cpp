@@ -161,6 +161,11 @@ namespace netusb_camera_driver {
     checkResult(result, "GetSize");
   }
 
+  void NETUSBCamera::setBoolParameter(const ParameterType &type, const bool &value)
+  {
+    setParameter(type, value ? ON : OFF);
+  }
+
   void NETUSBCamera::setParameter(const ParameterType &type, const int &value)
   {
     int result = 0;
@@ -209,6 +214,12 @@ namespace netusb_camera_driver {
       ss << "resetParameter: SetCamParameter: " << type_str << ", value: " << prop.nDef;
       checkResult(result, ss.str());
     }
+  }
+
+  bool NETUSBCamera::getBoolParameter(const ParameterType &type) const
+  {
+    int ivalue = getParameter(type);
+    return (Toggle)ivalue == ON ? true : false;
   }
 
   int NETUSBCamera::getParameter(const ParameterType &type) const
@@ -346,7 +357,8 @@ namespace netusb_camera_driver {
     case NETUSBCamera::CONTRAST: return "CONTRAST";
     case NETUSBCamera::GAMMA: return "GAMMA";
     case NETUSBCamera::WHITE_BALANCE: return "WHITE_BALANCE";
-//    case NETUSBCamera::EXPOSURE_TIME: return "EXPOSURE_TIME";
+    case NETUSBCamera::FLIPPED_V: return "FLIPPED_V";
+    case NETUSBCamera::FLIPPED_H: return "FLIPPED_H";
     case NETUSBCamera::EXPOSURE_TARGET: return "EXPOSURE_TARGET";
     case NETUSBCamera::RED: return "RED";
     case NETUSBCamera::GREEN: return "GREEN";

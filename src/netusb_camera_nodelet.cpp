@@ -82,6 +82,8 @@ namespace netusb_camera_driver
         cam_.setParameter(NETUSBCamera::BLUE, config.blue);
         cam_.setParameter(NETUSBCamera::MEASURE_FIELD_AE, config.measure_field_ae);
         cam_.setParameter(NETUSBCamera::SHUTTER, config.shutter);
+        cam_.setBoolParameter(NETUSBCamera::FLIPPED_V, config.flipped_v);
+        cam_.setBoolParameter(NETUSBCamera::FLIPPED_H, config.flipped_h);
         if (config.white_balance) cam_.setWhiteBalance();
         if (config.reset) resetConfig();
       } catch (std::runtime_error &e) {
@@ -111,6 +113,8 @@ namespace netusb_camera_driver
     cam_.resetParameter(NETUSBCamera::BLUE);
     cam_.resetParameter(NETUSBCamera::MEASURE_FIELD_AE);
     cam_.resetParameter(NETUSBCamera::SHUTTER);
+    cam_.resetParameter(NETUSBCamera::FLIPPED_V);
+    cam_.resetParameter(NETUSBCamera::FLIPPED_H);
   }
 
   void NETUSBCameraNodelet::getConfig(Config &config, const uint32_t &level)
@@ -129,6 +133,8 @@ namespace netusb_camera_driver
       config.blue = cam_.getParameter(NETUSBCamera::BLUE);
       config.measure_field_ae = cam_.getParameter(NETUSBCamera::MEASURE_FIELD_AE);
       config.shutter = cam_.getParameter(NETUSBCamera::SHUTTER);
+      config.flipped_v = cam_.getBoolParameter(NETUSBCamera::FLIPPED_V);
+      config.flipped_h = cam_.getBoolParameter(NETUSBCamera::FLIPPED_H);
       config.white_balance = false;
       config.reset = false;
     }
