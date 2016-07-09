@@ -141,7 +141,7 @@ namespace netusb_camera_driver {
     return (Mode)mode;
   }
 
-  void NETUSBCamera::setVideoMode(const Mode &mode)
+  void NETUSBCamera::setVideoMode(const NETUSBCamera::Mode &mode)
   {
     int result = 0;
 
@@ -272,6 +272,13 @@ namespace netusb_camera_driver {
     checkResult(result, ss.str());
   }
 
+  void NETUSBCamera::setWhiteBalance()
+  {
+    int result = 0;
+    result = NETUSBCAM_SetParamOnePush(camera_index_, WHITE_BALANCE);
+    checkResult(result, "adjustWhiteBalance");
+  }
+
   void NETUSBCamera::RGBImageCallback(void* buffer, unsigned int bufferSize)
   {
     boost::mutex::scoped_lock lock(mutex_);
@@ -344,7 +351,7 @@ namespace netusb_camera_driver {
     case NETUSBCamera::RED: return "RED";
     case NETUSBCamera::GREEN: return "GREEN";
     case NETUSBCamera::BLUE: return "BLUE";
-//    case NETUSBCamera::COLOR: return "COLOR";
+    case NETUSBCamera::COLOR: return "COLOR";
     case NETUSBCamera::BLACKLEVEL: return "BLACKLEVEL";
     case NETUSBCamera::GAIN: return "GAIN";
     case NETUSBCamera::PLL: return "PLL";

@@ -17,6 +17,7 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/fill_image.h>
+#include <cv_bridge/cv_bridge.h>
 #include <dynamic_reconfigure/server.h>
 
 #include <netusb_camera_driver/NETUSBCamera.h>
@@ -36,6 +37,8 @@ namespace netusb_camera_driver
     void disconnectCallback();
     void onInit();
     void imagePoll();
+    void resetConfig();
+    void getConfig(Config &config, const uint32_t &level);
 
     ros::NodeHandle nh_, pnh_;
     boost::shared_ptr<image_transport::ImageTransport> it_;

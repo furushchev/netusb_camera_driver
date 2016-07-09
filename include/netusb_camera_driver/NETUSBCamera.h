@@ -19,7 +19,7 @@ class NETUSBCamera
 {
 public:
 
-  enum LEVEL {
+  enum Level {
     RECONFIGURE_RUNNING = 0,
     RECONFIGURE_STOPPED = 1
   };
@@ -60,6 +60,7 @@ public:
     BLUE = 11, // only for color models; RGB Gain value
     BLACKLEVEL = 12, // sensor blacklevel
     GAIN = 13, // sensor gain
+    COLOR = 117,
     PLL = 15, // all models
     STROBE_LENGTH = 16, // length of strobe pulse output (msec)
     STROBE_DELAY = 17, // delay before strobe pulse is executed (msec)
@@ -112,6 +113,8 @@ public:
   void  setExposure(const double &value);
   double getExposure() const;
   void resetExposure() const;
+
+  void setWhiteBalance();
 
   void  RGBImageCallback(void *buffer, unsigned int buffersize);
 

@@ -7,6 +7,18 @@
 
 namespace netusb_camera_driver
 {
+  void ConvertBGR2BRG(cv::Mat &mat) {
+    for(int y = 0; y < mat.rows; ++y) {
+      for (int x = 0; x < mat.cols; ++x) {
+        uint8_t b = mat.data[y * mat.step + x * mat.elemSize() + 0];
+        uint8_t g = mat.data[y * mat.step + x * mat.elemSize() + 1];
+        uint8_t r = mat.data[y * mat.step + x * mat.elemSize() + 2];
+        mat.data[y * mat.step + x * mat.elemSize() + 0] = r;
+        mat.data[y * mat.step + x * mat.elemSize() + 1] = b;
+        mat.data[y * mat.step + x * mat.elemSize() + 2] = g;
+      }
+    }
+  }
 
   NETUSBCameraNodelet::NETUSBCameraNodelet() {}
 
@@ -42,7 +54,6 @@ namespace netusb_camera_driver
         bool wasRunning = !cam_.isStopped();
         if (wasRunning) cam_.stop();
         cam_.setVideoMode((NETUSBCamera::Mode)config.video_mode);
-        config.video_mode = (int)cam_.getVideoMode();
         if (wasRunning) {
           while (cam_.isStopped() && ros::ok()) {
             try {
@@ -57,8 +68,71 @@ namespace netusb_camera_driver
         NODELET_ERROR("failed to set config: %s", e.what());
       }
     } else {
-      // TODO
+      try {
+        cam_.setParameter(NETUSBCamera::BRIGHTNESS, config.brightness);
+        cam_.setParameter(NETUSBCamera::CONTRAST, config.contrast);
+        cam_.setParameter(NETUSBCamera::GAMMA, config.gamma);
+        cam_.setParameter(NETUSBCamera::BLACKLEVEL, config.blacklevel);
+        cam_.setExposure(config.exposure_time);
+        cam_.setParameter(NETUSBCamera::EXPOSURE_TARGET, config.exposure_target);
+        cam_.setParameter(NETUSBCamera::GAIN, config.gain);
+        cam_.setParameter(NETUSBCamera::PLL, config.pll);
+        cam_.setParameter(NETUSBCamera::RED, config.red);
+        cam_.setParameter(NETUSBCamera::GREEN, config.green);
+        cam_.setParameter(NETUSBCamera::BLUE, config.blue);
+        cam_.setParameter(NETUSBCamera::MEASURE_FIELD_AE, config.measure_field_ae);
+        cam_.setParameter(NETUSBCamera::SHUTTER, config.shutter);
+        if (config.white_balance) cam_.setWhiteBalance();
+        if (config.reset) resetConfig();
+      } catch (std::runtime_error &e) {
+        NODELET_ERROR("failed to set config: %s", e.what());
+      }
     }
+
+    try {
+      getConfig(config, level);
+    } catch (std::runtime_error &e) {
+      NODELET_ERROR("failed to sync config: %s", e.what());
+    }
+  }
+
+  void NETUSBCameraNodelet::resetConfig()
+  {
+    cam_.resetParameter(NETUSBCamera::BRIGHTNESS);
+    cam_.resetParameter(NETUSBCamera::CONTRAST);
+    cam_.resetParameter(NETUSBCamera::GAMMA);
+    cam_.resetParameter(NETUSBCamera::BLACKLEVEL);
+    cam_.resetExposure();
+    cam_.resetParameter(NETUSBCamera::EXPOSURE_TARGET);
+    cam_.resetParameter(NETUSBCamera::GAIN);
+    cam_.resetParameter(NETUSBCamera::PLL);
+    cam_.resetParameter(NETUSBCamera::RED);
+    cam_.resetParameter(NETUSBCamera::GREEN);
+    cam_.resetParameter(NETUSBCamera::BLUE);
+    cam_.resetParameter(NETUSBCamera::MEASURE_FIELD_AE);
+    cam_.resetParameter(NETUSBCamera::SHUTTER);
+  }
+
+  void NETUSBCameraNodelet::getConfig(Config &config, const uint32_t &level)
+  {
+    if(level == NETUSBCamera::RECONFIGURE_RUNNING) {
+      config.brightness = cam_.getParameter(NETUSBCamera::BRIGHTNESS);
+      config.contrast = cam_.getParameter(NETUSBCamera::CONTRAST);
+      config.gamma = cam_.getParameter(NETUSBCamera::GAMMA);
+      config.blacklevel = cam_.getParameter(NETUSBCamera::BLACKLEVEL);
+      config.exposure_time = cam_.getExposure();
+      config.exposure_target = cam_.getParameter(NETUSBCamera::EXPOSURE_TARGET);
+      config.gain = cam_.getParameter(NETUSBCamera::GAIN);
+      config.pll = cam_.getParameter(NETUSBCamera::PLL);
+      config.red = cam_.getParameter(NETUSBCamera::RED);
+      config.green = cam_.getParameter(NETUSBCamera::GREEN);
+      config.blue = cam_.getParameter(NETUSBCamera::BLUE);
+      config.measure_field_ae = cam_.getParameter(NETUSBCamera::MEASURE_FIELD_AE);
+      config.shutter = cam_.getParameter(NETUSBCamera::SHUTTER);
+      config.white_balance = false;
+      config.reset = false;
+    }
+    config.video_mode = cam_.getVideoMode();
   }
 
   void NETUSBCameraNodelet::connectCallback()
@@ -147,6 +221,11 @@ namespace netusb_camera_driver
         cam_info_->header.seq = imgmsg->header.seq;
         cam_info_->header.stamp = imgmsg->header.stamp;
         cam_info_->header.frame_id = imgmsg->header.frame_id;
+
+        // convert to bgr image
+        cv::Mat cvimg(imgmsg->data, false);
+        ConvertBGR2BRG(cvimg);
+
         // FIXME: ROI
 
         pub_.publish(imgmsg, cam_info_);
@@ -206,8 +285,6 @@ namespace netusb_camera_driver
       boost::bind(&NETUSBCameraNodelet::disconnectCallback, this);
     pub_ = it_->advertiseCamera("image_raw", 5, it_conn_cb, it_disconn_cb);
   }
-
-
 } // namespace netusb_camera_driver
 
 #include <pluginlib/class_list_macros.h>
