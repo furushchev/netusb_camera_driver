@@ -29,4 +29,11 @@ public:
   CameraNotFoundException(std::string msg): runtime_error(msg.c_str()) {}
 };
 
+class InvalidParameterException: public std::runtime_error
+{
+public:
+  InvalidParameterException(): runtime_error("Invalid Parameter") {}
+  InvalidParameterException(std::string msg): runtime_error(msg.c_str()) {}
+};
+
 #endif // EXCEPTIONS_H__

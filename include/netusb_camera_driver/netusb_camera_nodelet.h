@@ -33,8 +33,8 @@ namespace netusb_camera_driver
   private:
     void configCallback(Config &config, const uint32_t level);
     void connectCallback();
+    void disconnectCallback();
     void onInit();
-    void updateConfig();
     void imagePoll();
 
     ros::NodeHandle nh_, pnh_;
