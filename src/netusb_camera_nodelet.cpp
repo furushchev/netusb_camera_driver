@@ -7,6 +7,18 @@
 
 namespace netusb_camera_driver
 {
+  void ConvertBGR2BRG(cv::Mat &mat) {
+    for(int y = 0; y < mat.rows; ++y) {
+      for (int x = 0; x < mat.cols; ++x) {
+        uint8_t b = mat.data[y * mat.step + x * mat.elemSize() + 0];
+        uint8_t g = mat.data[y * mat.step + x * mat.elemSize() + 1];
+        uint8_t r = mat.data[y * mat.step + x * mat.elemSize() + 2];
+        mat.data[y * mat.step + x * mat.elemSize() + 0] = r;
+        mat.data[y * mat.step + x * mat.elemSize() + 1] = b;
+        mat.data[y * mat.step + x * mat.elemSize() + 2] = g;
+      }
+    }
+  }
 
   NETUSBCameraNodelet::NETUSBCameraNodelet() {}
 
@@ -34,138 +46,154 @@ namespace netusb_camera_driver
 
   void NETUSBCameraNodelet::configCallback(Config &config, const uint32_t level)
   {
-    boost::mutex::scoped_lock slock(cfg_mutex_);
     NODELET_INFO("configCallback called");
-    if (cfg_.video_mode != config.video_mode) {
-      NODELET_INFO("will change mode to %d", config.video_mode);
-      cam_.setMode((NETUSBCamera::Mode)config.video_mode);
+    if (!cam_.isConnected()) cam_.connect();
+    boost::mutex::scoped_lock slock(cfg_mutex_);
+    if (level != NETUSBCamera::RECONFIGURE_RUNNING) {
+      try {
+        bool wasRunning = !cam_.isStopped();
+        if (wasRunning) cam_.stop();
+        cam_.setVideoMode((NETUSBCamera::Mode)config.video_mode);
+        if (wasRunning) {
+          while (cam_.isStopped() && ros::ok()) {
+            try {
+              cam_.start();
+            } catch (std::runtime_error &se) {
+              NODELET_ERROR("failed to start camera: %s", se.what());
+              ros::Duration(1.0).sleep();
+            }
+          }
+        }
+      } catch (std::runtime_error &e) {
+        NODELET_ERROR("failed to set config: %s", e.what());
+      }
+    } else {
+      try {
+        cam_.setParameter(NETUSBCamera::BRIGHTNESS, config.brightness);
+        cam_.setParameter(NETUSBCamera::CONTRAST, config.contrast);
+        cam_.setParameter(NETUSBCamera::GAMMA, config.gamma);
+        cam_.setParameter(NETUSBCamera::BLACKLEVEL, config.blacklevel);
+        cam_.setExposure(config.exposure_time);
+        cam_.setParameter(NETUSBCamera::EXPOSURE_TARGET, config.exposure_target);
+        cam_.setParameter(NETUSBCamera::GAIN, config.gain);
+        cam_.setParameter(NETUSBCamera::PLL, config.pll);
+        cam_.setParameter(NETUSBCamera::RED, config.red);
+        cam_.setParameter(NETUSBCamera::GREEN, config.green);
+        cam_.setParameter(NETUSBCamera::BLUE, config.blue);
+        cam_.setParameter(NETUSBCamera::MEASURE_FIELD_AE, config.measure_field_ae);
+        cam_.setParameter(NETUSBCamera::SHUTTER, config.shutter);
+        cam_.setBoolParameter(NETUSBCamera::FLIPPED_V, config.flipped_v);
+        cam_.setBoolParameter(NETUSBCamera::FLIPPED_H, config.flipped_h);
+        if (config.white_balance) cam_.setWhiteBalance();
+        if (config.reset) resetConfig();
+      } catch (std::runtime_error &e) {
+        NODELET_ERROR("failed to set config: %s", e.what());
+      }
     }
-    if (cfg_.exposure != config.exposure)
-      cam_.setExposure((float)config.exposure);
-    if (cfg_.color != config.color)
-      cam_.setParameter(NETUSBCamera::COLOR, config.color);
-    if (cfg_.pixel_depth != config.pixel_depth)
-      cam_.setParameter(NETUSBCamera::PIXEL_DEPTH, config.pixel_depth);
-    if (cfg_.brightness != config.brightness)
-      cam_.setParameter(NETUSBCamera::BRIGHTNESS, config.brightness);
-    if (cfg_.contrast != config.contrast)
-      cam_.setParameter(NETUSBCamera::CONTRAST, config.contrast);
-    if (cfg_.gamma != config.gamma)
-      cam_.setParameter(NETUSBCamera::GAMMA, config.gamma);
-    if (cfg_.white_balance != config.white_balance)
-      cam_.setParameter(NETUSBCamera::WHITE_BALANCE, config.white_balance);
-    if (cfg_.gain != config.gain)
-      cam_.setParameter(NETUSBCamera::GAIN, config.gain);
-    if (cfg_.red_gain != config.red_gain)
-      cam_.setParameter(NETUSBCamera::RED, config.red_gain);
-    if (cfg_.green_gain != config.green_gain)
-      cam_.setParameter(NETUSBCamera::GREEN, config.green_gain);
-    if (cfg_.blue_gain != config.blue_gain)
-      cam_.setParameter(NETUSBCamera::BLUE, config.blue_gain);
-    if (cfg_.shutter != config.shutter)
-      cam_.setParameter(NETUSBCamera::SHUTTER, config.shutter);
-    cfg_ = config;
+
+    try {
+      getConfig(config, level);
+    } catch (std::runtime_error &e) {
+      NODELET_ERROR("failed to sync config: %s", e.what());
+    }
   }
 
-  void NETUSBCameraNodelet::updateConfig()
+  void NETUSBCameraNodelet::resetConfig()
   {
-    Config min, max, def;
-    def.video_mode = cam_.getMode();
-    def.flipped_v = cam_.getParameter(NETUSBCamera::FLIPPED_V);
-    def.flipped_h = cam_.getParameter(NETUSBCamera::FLIPPED_H);
-    def.color = cam_.getParameter(NETUSBCamera::COLOR);
-    def.pixel_depth = cam_.getParameter(NETUSBCamera::PIXEL_DEPTH);
-    def.defect_cor = cam_.getParameter(NETUSBCamera::DEFECT_COR);
-    def.sw_trig_mode = cam_.getParameter(NETUSBCamera::SW_TRIG_MODE);
-    def.callback_br_frames = cam_.getParameter(NETUSBCamera::CALLBACK_BR_FRAMES);
-    cam_.getExposureRange(min.exposure, max.exposure, def.exposure);
-    cam_.getParameterRange(NETUSBCamera::SHUTTER,
-                           min.shutter, max.shutter, def.shutter);
-    cam_.getParameterRange(NETUSBCamera::BRIGHTNESS,
-                           min.brightness, max.brightness, def.brightness);
-    cam_.getParameterRange(NETUSBCamera::CONTRAST,
-                           min.contrast, max.contrast, def.contrast);
-    cam_.getParameterRange(NETUSBCamera::GAMMA,
-                           min.gamma, max.gamma, def.gamma);
-    cam_.getParameterRange(NETUSBCamera::WHITE_BALANCE,
-                           min.white_balance, max.white_balance, def.white_balance);
-    cam_.getParameterRange(NETUSBCamera::GAIN,
-                           min.gain, max.gain, def.gain);
-    cam_.getParameterRange(NETUSBCamera::RED,
-                           min.red_gain, max.red_gain, def.red_gain);
-    cam_.getParameterRange(NETUSBCamera::GREEN,
-                           min.green_gain, max.green_gain, def.green_gain);
-    cam_.getParameterRange(NETUSBCamera::BLUE,
-                           min.blue_gain, max.blue_gain, def.blue_gain);
-    cam_.getParameterRange(NETUSBCamera::BLACKLEVEL,
-                           min.blacklevel, max.blacklevel, def.blacklevel);
-    cam_.getParameterRange(NETUSBCamera::PLL,
-                           min.pll, max.pll, def.pll);
-    cam_.getParameterRange(NETUSBCamera::STROBE_LENGTH,
-                           min.strobe_length, max.strobe_length, def.strobe_length);
-    cam_.getParameterRange(NETUSBCamera::STROBE_DELAY,
-                           min.strobe_delay, max.strobe_delay, def.strobe_delay);
-    cam_.getParameterRange(NETUSBCamera::TRIGGER_DELAY,
-                           min.trigger_delay, max.trigger_delay, def.trigger_delay);
+    cam_.resetParameter(NETUSBCamera::BRIGHTNESS);
+    cam_.resetParameter(NETUSBCamera::CONTRAST);
+    cam_.resetParameter(NETUSBCamera::GAMMA);
+    cam_.resetParameter(NETUSBCamera::BLACKLEVEL);
+    cam_.resetExposure();
+    cam_.resetParameter(NETUSBCamera::EXPOSURE_TARGET);
+    cam_.resetParameter(NETUSBCamera::GAIN);
+    cam_.resetParameter(NETUSBCamera::PLL);
+    cam_.resetParameter(NETUSBCamera::RED);
+    cam_.resetParameter(NETUSBCamera::GREEN);
+    cam_.resetParameter(NETUSBCamera::BLUE);
+    cam_.resetParameter(NETUSBCamera::MEASURE_FIELD_AE);
+    cam_.resetParameter(NETUSBCamera::SHUTTER);
+    cam_.resetParameter(NETUSBCamera::FLIPPED_V);
+    cam_.resetParameter(NETUSBCamera::FLIPPED_H);
+  }
 
-    srv_->setConfigDefault(def);
-    srv_->setConfigMin(min);
-    srv_->setConfigMax(max);
-
-    configCallback(def, 0);
+  void NETUSBCameraNodelet::getConfig(Config &config, const uint32_t &level)
+  {
+    if(level == NETUSBCamera::RECONFIGURE_RUNNING) {
+      config.brightness = cam_.getParameter(NETUSBCamera::BRIGHTNESS);
+      config.contrast = cam_.getParameter(NETUSBCamera::CONTRAST);
+      config.gamma = cam_.getParameter(NETUSBCamera::GAMMA);
+      config.blacklevel = cam_.getParameter(NETUSBCamera::BLACKLEVEL);
+      config.exposure_time = cam_.getExposure();
+      config.exposure_target = cam_.getParameter(NETUSBCamera::EXPOSURE_TARGET);
+      config.gain = cam_.getParameter(NETUSBCamera::GAIN);
+      config.pll = cam_.getParameter(NETUSBCamera::PLL);
+      config.red = cam_.getParameter(NETUSBCamera::RED);
+      config.green = cam_.getParameter(NETUSBCamera::GREEN);
+      config.blue = cam_.getParameter(NETUSBCamera::BLUE);
+      config.measure_field_ae = cam_.getParameter(NETUSBCamera::MEASURE_FIELD_AE);
+      config.shutter = cam_.getParameter(NETUSBCamera::SHUTTER);
+      config.flipped_v = cam_.getBoolParameter(NETUSBCamera::FLIPPED_V);
+      config.flipped_h = cam_.getBoolParameter(NETUSBCamera::FLIPPED_H);
+      config.white_balance = false;
+      config.reset = false;
+    }
+    config.video_mode = cam_.getVideoMode();
   }
 
   void NETUSBCameraNodelet::connectCallback()
   {
-    NODELET_INFO("called connectCb");
+    NODELET_INFO("connectCallback");
     boost::mutex::scoped_lock slock(conn_mutex_);
-    if (pub_.getNumSubscribers() == 0)
-    {
-      try
-      {
-        NODELET_INFO("Stopping netusb camera");
-        cam_.stop();
-        pub_thread_->interrupt();
-      }
-      catch (std::runtime_error &err)
-      {
-        NODELET_ERROR("%s", err.what());
-        ros::Duration(1.0).sleep();
-      }
-    } else if (cam_.isStopped()) {
-      while (!cam_.isConnected() && ros::ok())
-      {
-        try
-        {
+    if (pub_.getNumSubscribers() > 0 && cam_.isStopped()) {
+      while (!cam_.isConnected() && ros::ok()) {
+        try {
           NODELET_INFO("Connecting to netusb camera");
           cam_.connect();
-          this->updateConfig();
-        }
-        catch (std::runtime_error &err)
-        {
-          NODELET_ERROR("%s", err.what());
+        } catch (std::runtime_error &e) {
+          NODELET_ERROR("failed to connect: %s", e.what());
           ros::Duration(1.0).sleep();
         }
       }
-      while (cam_.isStopped() && ros::ok())
-      {
-        try
-        {
+      while (cam_.isStopped() && ros::ok()) {
+        try {
           NODELET_INFO("Starting netusb camera");
           image_width_ = cam_.getWidth();
           image_height_ = cam_.getHeight();
           cam_.start();
-        }
-        catch (std::runtime_error &err)
-        {
-          NODELET_ERROR("%s", err.what());
+        } catch (std::runtime_error &e) {
+          NODELET_ERROR("failed to start: %s", e.what());
           ros::Duration(1.0).sleep();
         }
       }
       pub_thread_.reset(new boost::thread(
                           boost::bind(&NETUSBCameraNodelet::imagePoll, this)));
     } else {
-      NODELET_INFO("current subscriber: %d", pub_.getNumSubscribers());
+      NODELET_INFO("current subscriber: %d -> %d",
+                   pub_.getNumSubscribers()-1, pub_.getNumSubscribers());
+    }
+  }
+
+  void NETUSBCameraNodelet::disconnectCallback()
+  {
+    boost::mutex::scoped_lock slock(conn_mutex_);
+    if (pub_.getNumSubscribers() == 0)
+    {
+      try
+      {
+        NODELET_INFO("Stopping netusb camera");
+        pub_thread_->interrupt();
+        pub_thread_->join();
+        cam_.stop();
+      }
+      catch (std::runtime_error &e)
+      {
+        NODELET_ERROR("failed to stop: %s", e.what());
+        ros::Duration(1.0).sleep();
+      }
+    } else {
+      NODELET_INFO("current subscriber: %d -> %d",
+                   pub_.getNumSubscribers()+1, pub_.getNumSubscribers());
     }
   }
 
@@ -199,6 +227,11 @@ namespace netusb_camera_driver
         cam_info_->header.seq = imgmsg->header.seq;
         cam_info_->header.stamp = imgmsg->header.stamp;
         cam_info_->header.frame_id = imgmsg->header.frame_id;
+
+        // convert to bgr image
+        cv::Mat cvimg(imgmsg->data, false);
+        ConvertBGR2BRG(cvimg);
+
         // FIXME: ROI
 
         pub_.publish(imgmsg, cam_info_);
@@ -254,10 +287,10 @@ namespace netusb_camera_driver
     it_.reset(new image_transport::ImageTransport(nh_));
     image_transport::SubscriberStatusCallback it_conn_cb =
       boost::bind(&NETUSBCameraNodelet::connectCallback, this);
-    pub_ = it_->advertiseCamera("image_raw", 5, it_conn_cb, it_conn_cb);
+    image_transport::SubscriberStatusCallback it_disconn_cb =
+      boost::bind(&NETUSBCameraNodelet::disconnectCallback, this);
+    pub_ = it_->advertiseCamera("image_raw", 5, it_conn_cb, it_disconn_cb);
   }
-
-
 } // namespace netusb_camera_driver
 
 #include <pluginlib/class_list_macros.h>

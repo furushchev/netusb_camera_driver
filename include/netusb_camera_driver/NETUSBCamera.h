@@ -19,6 +19,11 @@ class NETUSBCamera
 {
 public:
 
+  enum Level {
+    RECONFIGURE_RUNNING = 0,
+    RECONFIGURE_STOPPED = 1
+  };
+
   enum Mode {
     QVGA = 0,
     VGA = 1,
@@ -44,51 +49,25 @@ public:
     NOT_IF_STARTED = -7
   };
 
-  enum Shutter {
-    ROLLING = 0,
-    GLOBAL_RESET = 1,
-    GLOBAL = 2 // default
-  };
-
-  enum ParameterToggle {
+  enum Toggle {
     ON = 0,
     OFF = 1
   };
 
-  enum TriggerMode {
-    DELAYED_TRIGGER_RETURN = 0, // default
-    IMMEDIATE_TRIGGER_RETURN = 1
-  };
-
-  enum TriggerInvert {
-    FALLING_EDGE = 0, // default
-    RISING_EDGE = 1
-  };
-
-  enum ParameterToggleType {
-    FLIPPED_V = 4, // (ON||OFF); OFF (default)
-    FLIPPED_H = 5, // (ON||OFF); OFF (default)
-    COLOR = 14, // (ON||OFF) read: color || bw model
-    TRIGGER_INVERT = 21, // (FALLING_EDGE (default) || RISING_EDGE)
-    DEFECT_COR = 43, // (4133CU/BU,4133CU) DefectPixelCorrection (ON||OFF); OFF(default)
-    SW_TRIG_MODE = 94,  // (DELAYED_TRIGGER_RETURN (default) || IMMEDIATE_TRIGGER_RETURN)
-    CALLBACK_BR_FRAMES = 97, // Broken frames also triggering the callback function (ON||OFF); OFF(default)
-    PIXEL_DEPTH = 120, // 0==8bit/pixel, 1=16bit/pixel
-    INVERT_PIXEL = 113 // (ON||OFF)  bw cams only
-  };
-
-  enum ParameterRangeType {
+  enum ParameterType {
     BRIGHTNESS = 1, // all models
     CONTRAST = 2, // all models
     GAMMA = 3, // all models
+    FLIPPED_V = 4, // (ON||OFF); OFF (default)
+    FLIPPED_H = 5, // (ON||OFF); OFF (default)
     WHITE_BALANCE = 6, // (one push)
-    EXPOSURE_TIME = 7, // all models
     EXPOSURE_TARGET = 8, // sets the target-value for the auto exposure algorithm 
     RED = 9, // only for color models; RGB Gain value
     GREEN = 10, // only for color models; RGB Gain value
     BLUE = 11, // only for color models; RGB Gain value
     BLACKLEVEL = 12, // sensor blacklevel
     GAIN = 13, // sensor gain
+    COLOR = 117,
     PLL = 15, // all models
     STROBE_LENGTH = 16, // length of strobe pulse output (msec)
     STROBE_DELAY = 17, // delay before strobe pulse is executed (msec)
@@ -114,6 +93,7 @@ public:
 
   void start();
   void stop();
+
   inline bool isStopped() const {
     return is_stopped_;
   };
@@ -121,8 +101,8 @@ public:
     return is_connected_;
   }
 
-  int  RGBImageCallback(void *buffer, unsigned int buffersize);
   bool getImage(std::vector<uint8_t> &buffer);
+
   int  getWidth() const {
     return image_width_;
   }
@@ -130,20 +110,22 @@ public:
     return image_height_;
   };
 
-  bool setMode(const Mode &mode);
-  Mode getMode() const;
+  void setVideoMode(const Mode &mode);
+  Mode getVideoMode() const;
 
-  bool setParameterAuto(const ParameterRangeType &type, const bool &enable);
-  bool setParameter(const ParameterToggleType &type, const bool &value);
-  bool setParameter(const ParameterRangeType &type, const unsigned long &value);
-  bool resetParameter(const ParameterToggleType &type);
-  bool resetParameter(const ParameterRangeType &type);
-  bool getParameter(const ParameterToggleType &type) const;
-  unsigned long getParameter(const ParameterRangeType &type) const;
-  bool getParameterRange(const ParameterRangeType &type, int &min, int &max, int &def) const;
-  bool  setExposure(const float &value);
-  float getExposure() const;
-  bool  getExposureRange(double &min, double &max, double &def) const;
+  void setBoolParameter(const ParameterType &type, const bool &value);
+  void setParameter(const ParameterType &type, const int &value);
+  void resetParameter(const ParameterType &type);
+  bool getBoolParameter(const ParameterType &type) const;
+  int getParameter(const ParameterType &type) const;
+
+  void  setExposure(const double &value);
+  double getExposure() const;
+  void resetExposure() const;
+
+  void setWhiteBalance();
+
+  void  RGBImageCallback(void *buffer, unsigned int buffersize);
 
   void checkResult(const int &result, const std::string &message) const;
 
