@@ -38,11 +38,9 @@ namespace netusb_camera_driver
     void imagePoll();
 
     ros::NodeHandle nh_, pnh_;
-    boost::shared_ptr<image_transport::ImageTransport> it_;
-    boost::shared_ptr<camera_info_manager::CameraInfoManager> cim_;
+    ros::Publisher img_pub_;
     boost::shared_ptr<dynamic_reconfigure::Server<Config> > srv_;
     Config cfg_;
-    image_transport::CameraPublisher pub_;
     sensor_msgs::CameraInfoPtr cam_info_;
 
     NETUSBCamera cam_;

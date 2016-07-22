@@ -119,7 +119,7 @@ namespace netusb_camera_driver
   {
     NODELET_INFO("called connectCb");
     boost::mutex::scoped_lock slock(conn_mutex_);
-    if (pub_.getNumSubscribers() == 0)
+    if (img_pub_.getNumSubscribers() == 0)
     {
       try
       {
@@ -165,7 +165,7 @@ namespace netusb_camera_driver
       pub_thread_.reset(new boost::thread(
                           boost::bind(&NETUSBCameraNodelet::imagePoll, this)));
     } else {
-      NODELET_INFO("current subscriber: %d", pub_.getNumSubscribers());
+      NODELET_INFO("current subscriber: %d", img_pub_.getNumSubscribers());
     }
   }
 
@@ -177,7 +177,7 @@ namespace netusb_camera_driver
     uint32_t fps_count = 0;
     while(!boost::this_thread::interruption_requested())
     {
-      if(pub_.getNumSubscribers() == 0)
+      if(img_pub_.getNumSubscribers() == 0)
         continue;
       try
       {
@@ -194,14 +194,10 @@ namespace netusb_camera_driver
         imgmsg->step = imgmsg->data.size() / image_height_;
         imgmsg->is_bigendian = 0;
 
-        // camera info
-        cam_info_.reset(new sensor_msgs::CameraInfo(cim_->getCameraInfo()));
-        cam_info_->header.seq = imgmsg->header.seq;
-        cam_info_->header.stamp = imgmsg->header.stamp;
-        cam_info_->header.frame_id = imgmsg->header.frame_id;
         // FIXME: ROI
 
-        pub_.publish(imgmsg, cam_info_);
+//        pub_.publish(imgmsg, cam_info_);
+        img_pub_.publish(imgmsg);
 
         // fps
         ++fps_count;
@@ -236,13 +232,7 @@ namespace netusb_camera_driver
     pnh_.param<double>("conenction_timeout", conn_timeout_, 0.0);
     pnh_.param<std::string>("frame_id", frame_id_, "camera");
 
-    image_encoding_ = sensor_msgs::image_encodings::BGR8;
-
-    // setup camera info manager
-    std::string cam_info_url;
-    pnh_.param<std::string>("camera_info_url", cam_info_url, "");
-    std::string cam_name = cam_.getName();
-    cim_.reset(new camera_info_manager::CameraInfoManager(nh_, cam_name, cam_info_url));
+    image_encoding_ = sensor_msgs::image_encodings::BAYER_GRBG8;
 
     // setup dynamic reconfigure server
     srv_ = boost::make_shared<dynamic_reconfigure::Server<Config> > (pnh_);
@@ -251,10 +241,12 @@ namespace netusb_camera_driver
     srv_->setCallback(f);
 
     // setup publishers
-    it_.reset(new image_transport::ImageTransport(nh_));
-    image_transport::SubscriberStatusCallback it_conn_cb =
+    // it_.reset(new image_transport::ImageTransport(nh_));
+    ros::SubscriberStatusCallback conn_cb =
       boost::bind(&NETUSBCameraNodelet::connectCallback, this);
-    pub_ = it_->advertiseCamera("image_raw", 5, it_conn_cb, it_conn_cb);
+    img_pub_ = nh_.advertise<sensor_msgs::Image>("image_raw", 1, conn_cb, conn_cb);
+//    pub_ = it_->advertiseCamera("image_raw", 5, it_conn_cb, it_conn_cb);
+
   }
 
 

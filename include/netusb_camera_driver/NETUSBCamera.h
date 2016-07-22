@@ -121,7 +121,7 @@ public:
     return is_connected_;
   }
 
-  int  RGBImageCallback(void *buffer, unsigned int buffersize);
+  int  ImageCallback(void *buffer, unsigned int buffersize);
   bool getImage(std::vector<uint8_t> &buffer);
   int  getWidth() const {
     return image_width_;
