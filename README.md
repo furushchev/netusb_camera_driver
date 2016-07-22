@@ -32,22 +32,16 @@ $ roscd netusb_camera_driver
 $ sudo cp udev/99-netusbcam.rules /etc/udev/rules.d
 ```
 
-## Launching Node
+## Launching Camera Nodes
 
-1. Launch roscore
+1. Launch Driver
 
-```bash
-$ roscore
+``` bash
+$ roslaunch netusb_camera_driver camera.launch
 ```
 
-2. Launch Driver
+3. Launch Driver, Viewer and Reconfigure
 
 ```bash
-$ rosrun netusb_camera_driver netusb_camera_node
-```
-
-3. Launch viewer
-
-```bash
-$ rosrun image_view image_view image:=/image_raw
+$ roslaunch netusb_camera_driver sample.launch
 ```
