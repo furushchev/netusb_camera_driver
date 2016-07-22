@@ -9,7 +9,7 @@
 
 namespace netusb_camera_driver {
 
-  int RGBImageCallbackDelegate(void*,unsigned int,void*);
+  int ImageCallbackDelegate(void*,unsigned int,void*);
   std::string ImageModeString(const NETUSBCamera::Mode &mode);
   std::string ErrorString(const NETUSBCamera::Result &result);
   std::string ParameterTypeString(const int &type);
@@ -83,7 +83,7 @@ namespace netusb_camera_driver {
   {
     int result = 0;
 
-    result = NETUSBCAM_SetCallback(camera_index_, CALLBACK_RGB, &RGBImageCallbackDelegate, this);
+    result = NETUSBCAM_SetCallback(camera_index_, CALLBACK_RAW, &ImageCallbackDelegate, this);
     checkResult(result, "SetCallback");
 
     result = NETUSBCAM_Start(camera_index_);
@@ -98,7 +98,7 @@ namespace netusb_camera_driver {
     result = NETUSBCAM_Stop(camera_index_);
     checkResult(result, "Stop");
 
-    result = NETUSBCAM_SetCallback(camera_index_, CALLBACK_RGB, NULL, NULL);
+    result = NETUSBCAM_SetCallback(camera_index_, CALLBACK_RAW, NULL, NULL);
     checkResult(result, "SetCallback to NULL");
 
     is_stopped_ = true;
@@ -290,17 +290,17 @@ namespace netusb_camera_driver {
     checkResult(result, "adjustWhiteBalance");
   }
 
-  void NETUSBCamera::RGBImageCallback(void* buffer, unsigned int bufferSize)
+  void NETUSBCamera::ImageCallback(void* buffer, unsigned int bufferSize)
   {
     boost::mutex::scoped_lock lock(mutex_);
     latest_buffer_ = (uint8_t*)buffer;
     latest_buffersize_ = bufferSize;
   }
 
-  int RGBImageCallbackDelegate(void* buffer, unsigned int bufferSize, void* ctx)
+  int ImageCallbackDelegate(void* buffer, unsigned int bufferSize, void* ctx)
   {
     NETUSBCamera* cam = (NETUSBCamera*)ctx;
-    cam->RGBImageCallback(buffer, bufferSize);
+    cam->ImageCallback(buffer, bufferSize);
     return 0;
   }
 

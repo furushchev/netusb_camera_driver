@@ -269,7 +269,7 @@ namespace netusb_camera_driver
     pnh_.param<double>("conenction_timeout", conn_timeout_, 0.0);
     pnh_.param<std::string>("frame_id", frame_id_, "camera");
 
-    image_encoding_ = sensor_msgs::image_encodings::BGR8;
+    image_encoding_ = sensor_msgs::image_encodings::BAYER_GRBG8;
 
     // setup camera info manager
     std::string cam_info_url;

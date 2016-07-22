@@ -125,7 +125,7 @@ public:
 
   void setWhiteBalance();
 
-  void  RGBImageCallback(void *buffer, unsigned int buffersize);
+  void  ImageCallback(void *buffer, unsigned int buffersize);
 
   void checkResult(const int &result, const std::string &message) const;
 
